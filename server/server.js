@@ -251,8 +251,9 @@ app.post('/capture', async (req, res) => {
       `${Object.keys(images).length} raster, ${Object.keys(svgs).length} svg, ${Date.now() - t0}ms` +
       `${result.meta.truncated ? ' ⚠ TRUNCATED at ' + MAX_NODES : ''}`
     );
-    res.set('Content-Encoding', 'identity'); // nginx-brotli не трогает уже помеченный ответ → Figma-плагин парсит чистый JSON
-    res.json({ tree: result.tree, images, svgs, meta: result.meta });
+    // отдаём как octet-stream (не в brotli_types) → nginx-brotli НЕ сжимает → Figma-плагин парсит чистый JSON.
+    // fetch().json() в плагине парсит тело независимо от Content-Type.
+    res.type('application/octet-stream').send(JSON.stringify({ tree: result.tree, images, svgs, meta: result.meta }));
   } catch (e) {
     console.error('capture error:', e.message);
     res.status(500).json({ error: e.message });
