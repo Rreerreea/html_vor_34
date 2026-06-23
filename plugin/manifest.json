@@ -1,0 +1,11 @@
+{
+  "name": "html_vor_34",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["*"],
+    "reasoning": "Talks to the local capture server (http://localhost:3789) to fetch the serialized page."
+  }
+}

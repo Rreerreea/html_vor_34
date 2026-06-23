@@ -1,0 +1,17 @@
+{
+  "name": "html-to-figma-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local capture server for the HTML to Figma (Free) plugin",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "playwright": "^1.45.0",
+    "sharp": "^0.35.2"
+  }
+}
