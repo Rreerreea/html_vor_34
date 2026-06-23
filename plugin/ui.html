@@ -186,7 +186,7 @@
   }));
 
   /* сервер */
-  function currentServer(){ return 'http://localhost:3789'; } // ВРЕМЕННО localhost для диагностики (вернуть CLOUD после)
+  function currentServer(){ return CLOUD; } // облако ascii.goshakazakov.ru (оптимизировано: gzip + лёгкие картинки)
 
   /* иконки в заголовках */
   function drawIcon(id){ const t=$(id); if(!t)return; const c=t.getContext('2d'); c.clearRect(0,0,14,14); c.fillStyle='#fff'; c.fillRect(3,1,8,12); c.fillStyle='#000'; c.fillRect(3,1,8,1); c.fillRect(3,12,8,1); c.fillRect(3,1,1,12); c.fillRect(10,1,1,12); c.fillStyle='#1084d0'; c.fillRect(4,3,5,1); c.fillStyle='#888'; c.fillRect(4,5,6,1); c.fillRect(4,7,4,1); c.fillRect(4,9,5,1); }
