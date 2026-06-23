@@ -119,6 +119,8 @@ app.post('/capture', async (req, res) => {
         '(KHTML, like Gecko) Chrome/126.0 Safari/537.36'
     });
     page = await context.newPage();
+    page.setDefaultTimeout(30000);
+    page.setDefaultNavigationTimeout(30000);
     await gotoResilient(page, url);
 
     // глушим анимации/переходы: reveal-эффекты доезжают до конечного кадра мгновенно,
@@ -159,25 +161,21 @@ app.post('/capture', async (req, res) => {
       (n.children || []).forEach(measure);
     })(result.tree);
 
-    // Figma не рендерит image fill со стороной > 4096px; ужимаем + перекодируем webp/avif в png/jpeg
+    // Ресайз под реальный бокс отображения (×1.5) + пережатие в JPEG q78 — режет вес ответа для передачи.
+    // Figma всё равно не рендерит fill со стороной > 4096px. Прозрачные → PNG (с палитрой), остальное → JPEG.
     const FIGMA_MAX = 4096;
     async function normalizeRaster(buf, box) {
       let meta;
       try { meta = await sharp(buf, { failOn: 'none' }).metadata(); }
       catch (e) { return buf.toString('base64'); } // не картинка для sharp — отдаём как есть
-      const fmt = (meta.format || '').toLowerCase();
-      const needTranscode = fmt === 'webp' || fmt === 'avif' || fmt === 'heif';
       const longest = Math.max(meta.width || 0, meta.height || 0);
-      // потолок: min(4096, 2x большей стороны бокса); без бокса — просто 4096
-      const want = box ? Math.min(FIGMA_MAX, Math.max(1, Math.ceil(Math.max(box.w, box.h) * 2))) : FIGMA_MAX;
-      const needResize = longest > want;
-      if (!needTranscode && !needResize) return buf.toString('base64');
+      const want = box ? Math.min(FIGMA_MAX, Math.max(64, Math.ceil(Math.max(box.w, box.h) * 1.5))) : FIGMA_MAX;
       try {
         let pipe = sharp(buf, { failOn: 'none', animated: false });
-        if (needResize) pipe = pipe.resize({ width: want, height: want, withoutEnlargement: true, fit: 'inside' });
-        const out = needTranscode
-          ? (meta.hasAlpha ? await pipe.png().toBuffer() : await pipe.jpeg({ quality: 86 }).toBuffer())
-          : (fmt === 'png' ? await pipe.png().toBuffer() : await pipe.jpeg({ quality: 88 }).toBuffer());
+        if (longest > want) pipe = pipe.resize({ width: want, height: want, withoutEnlargement: true, fit: 'inside' });
+        const out = meta.hasAlpha
+          ? await pipe.png({ compressionLevel: 9, palette: true }).toBuffer()
+          : await pipe.jpeg({ quality: 78, mozjpeg: true }).toBuffer();
         return out.toString('base64');
       } catch (e) { return buf.toString('base64'); }
     }
@@ -268,14 +266,14 @@ app.post('/capture', async (req, res) => {
 // ретраи на «interrupted by another navigation»/сетевые сбои, проверка реальной загрузки.
 async function gotoResilient(page, url) {
   let lastErr;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     try {
-      const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
       const cur = page.url();
       if (cur.startsWith('chrome-error://')) throw new Error('страница не загрузилась (сетевая ошибка)');
       if (resp && resp.status() >= 400) throw new Error('сайт вернул HTTP ' + resp.status());
       // дать догрузиться динамике, но НЕ висеть на networkidle
-      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => {});
       return;
     } catch (e) {
       lastErr = e;

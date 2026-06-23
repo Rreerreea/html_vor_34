@@ -26,6 +26,11 @@
   .eqc { image-rendering:pixelated; background:#000; border:2px solid; border-color:var(--sh) var(--hi) var(--hi) var(--sh); flex-shrink:0; }
   #knob { cursor:grab; flex-shrink:0; }
   #knob:active { cursor:grabbing; }
+  .ghico { vertical-align:middle; image-rendering:pixelated; }
+  #ghlink { cursor:pointer; }
+  #ghlink:hover { text-decoration:underline; }
+  #donate { cursor:pointer; font-weight:bold; color:#000080; }
+  #donate:hover { text-decoration:underline; }
   .w95btn { font-family:inherit; font-size:12px; background:var(--face); color:#000; cursor:pointer; border:2px solid; border-color:var(--hi) var(--dk) var(--dk) var(--hi); box-shadow:inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--sh); padding:3px 8px; border-radius:0; }
   .w95btn:active:not(:disabled) { border-color:var(--dk) var(--hi) var(--hi) var(--dk); box-shadow:inset -1px -1px 0 #dfdfdf, inset 1px 1px 0 var(--sh); }
   .w95btn:disabled { color:var(--sh); text-shadow:1px 1px 0 var(--hi); cursor:default; }
@@ -106,14 +111,6 @@
           <textarea id="url" rows="2">https://apple.com</textarea>
           <label for="w">Ширина, px</label>
           <input id="w" type="number" value="1440" />
-          <label>Сервер рендера</label>
-          <div class="srvmode">
-            <button class="w95btn smode active" data-mode="unlim">∞ Безлимитный</button>
-            <button class="w95btn smode" data-mode="limit">⚡ Лимитный</button>
-          </div>
-          <div id="note-unlim" class="srvnote">свой селфхост — впиши адрес и запусти node server.js</div>
-          <div id="note-limit" class="srvnote" hidden>наш облачный сервер · тратит кредиты</div>
-          <div id="unlim-field"><label for="server">Адрес своего сервера</label><input id="server" type="text" value="http://localhost:3789" /></div>
         </fieldset>
         <div class="actions"><button id="go" class="w95btn go">▶ Собрать</button></div>
         <div id="status" class="status"></div>
@@ -124,7 +121,7 @@
           <div class="ccount">Кредитов: <span id="creditN">0</span></div>
           <div class="cmode">
             <button class="w95btn cmbtn active" data-cmode="click">⛏ Кликер</button>
-            <button class="w95btn cmbtn" data-cmode="casino">🎰 Казино</button>
+            <button class="w95btn cmbtn" data-cmode="casino">⛏ Шахта</button>
           </div>
           <div id="cred-click">
             <canvas id="clicker" width="170" height="170"></canvas>
@@ -141,7 +138,7 @@
       </div>
     </div>
 
-    <div class="bottomrow"><span id="fbtoggle">🐞 нашли ошибку?</span><span class="sep">·</span><span id="byline">by гошаказаков</span></div>
+    <div class="bottomrow"><span id="donate">☕ донат</span><span class="sep">·</span><span id="ghlink"><canvas id="ghico" class="ghico" width="14" height="14"></canvas>&nbsp;code</span><span class="sep">·</span><span id="fbtoggle">🐞 баг</span><span class="sep">·</span><span id="byline">by гошаказаков</span></div>
   </div>
 
   <div id="fbov">
@@ -160,11 +157,15 @@
     <div class="win">
       <div class="title-bar"><span class="title-bar-text"><canvas class="ico" id="ttico" width="14" height="14"></canvas>Импорт файлов…</span></div>
       <div class="winbody">
-        <canvas id="anim" width="296" height="84"></canvas>
+        <canvas id="anim" width="296" height="100"></canvas>
         <div class="winrow" id="animlabel">соединение…</div>
         <div class="pbar"><div class="pfill" id="pfill"></div></div>
-        <div style="display:flex;gap:6px;justify-content:center;align-items:center;margin-top:10px">
-          <button class="w95btn" id="prev2">◀</button><button class="w95btn" id="sound2">♪ Play</button><button class="w95btn" id="next2">▶</button>
+        <div class="player" style="margin-top:10px;padding:0">
+          <canvas id="eq2" class="eqc" width="22" height="16"></canvas>
+          <button class="w95btn" id="prev2">◀</button>
+          <div class="pname" id="trackname2">—</div>
+          <button class="w95btn" id="next2">▶</button>
+          <button class="w95btn" id="sound2">♪ Play</button>
         </div>
         <div class="winfoot"><button class="w95btn" id="cancelbtn">Отмена</button></div>
       </div>
@@ -174,7 +175,7 @@
 <script>
   const $ = (id)=>document.getElementById(id);
   const statusEl=$('status'), btn=$('go'), overlay=$('overlay');
-  const CLOUD='https://vor34.goshakazakov.ru';
+  const CLOUD='https://ascii.goshakazakov.ru';
   function setStatus(t,cls){ statusEl.textContent=t; statusEl.className='status'+(cls?' '+cls:''); }
 
   /* вкладки */
@@ -185,21 +186,30 @@
   }));
 
   /* сервер */
-  let srvMode='unlim';
-  document.querySelectorAll('.smode').forEach((b)=>b.addEventListener('click',()=>{
-    srvMode=b.dataset.mode; document.querySelectorAll('.smode').forEach((x)=>x.classList.toggle('active',x===b));
-    $('unlim-field').hidden=(srvMode!=='unlim'); $('note-unlim').hidden=(srvMode!=='unlim'); $('note-limit').hidden=(srvMode!=='limit');
-  }));
-  function currentServer(){ return srvMode==='limit'?CLOUD:($('server').value.trim().replace(/\/$/,'')||'http://localhost:3789'); }
+  function currentServer(){ return 'http://localhost:3789'; } // ВРЕМЕННО localhost для диагностики (вернуть CLOUD после)
 
   /* иконки в заголовках */
   function drawIcon(id){ const t=$(id); if(!t)return; const c=t.getContext('2d'); c.clearRect(0,0,14,14); c.fillStyle='#fff'; c.fillRect(3,1,8,12); c.fillStyle='#000'; c.fillRect(3,1,8,1); c.fillRect(3,12,8,1); c.fillRect(3,1,1,12); c.fillRect(10,1,1,12); c.fillStyle='#1084d0'; c.fillRect(4,3,5,1); c.fillStyle='#888'; c.fillRect(4,5,6,1); c.fillRect(4,7,4,1); c.fillRect(4,9,5,1); }
   drawIcon('ttico');
   $('byline').addEventListener('click',()=>{ try{window.open('https://goshakazakov.ru','_blank');}catch(e){} });
+  const REPO='https://github.com/Rreerreea/html_vor_34';
+  $('ghlink').addEventListener('click',()=>{ try{window.open(REPO,'_blank');}catch(e){} });
+  $('donate').addEventListener('click',()=>{ try{window.open('https://pay.cloudtips.ru/p/2c12c3c2','_blank');}catch(e){} });
+  (function drawGh(){ const g=$('ghico').getContext('2d'); g.clearRect(0,0,14,14); g.fillStyle='#000'; g.beginPath(); g.arc(7,8,5.5,0,Math.PI*2); g.fill(); g.fillRect(3,2,2,3); g.fillRect(9,2,2,3); g.fillStyle='#c0c0c0'; g.fillRect(5,7,1,2); g.fillRect(8,7,1,2); })();
 
   /* ══ ПЛЕЕР + CHIPTUNE (каверы, не оригиналы) ══ */
   const NH={C2:65.41,D2:73.42,E2:82.41,F2:87.31,G2:98,A2:110,B2:123.47,C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196,A3:220,B3:246.94,C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880,B5:987.77,C6:1046.5};
+  // радио (публичные потоки — легально) + локальные mp3 (личная версия; при публикации оставить только радио)
   const TRACKS=[
+    {name:'📻 SomaFM · DEF CON Radio', url:'https://ice1.somafm.com/defcon-128-mp3'},
+    {name:'📻 SomaFM · Synphaera (space)', url:'https://ice1.somafm.com/synphaera-256-mp3'},
+    {name:'📻 SomaFM · Beat Blender', url:'https://ice1.somafm.com/beatblender-128-mp3'},
+    {name:'📻 SomaFM · Secret Agent', url:'https://ice1.somafm.com/secretagent-128-mp3'},
+    {name:'📻 SomaFM · Groove Salad', url:'https://ice1.somafm.com/groovesalad-128-mp3'},
+    {name:'📻 SomaFM · Underground 80s', url:'https://ice1.somafm.com/u80s-128-mp3'},
+    {name:'📻 SomaFM · Vaporwaves', url:'https://ice1.somafm.com/vaporwaves-128-mp3'},
+    {name:'📻 SomaFM · Space Station', url:'https://ice1.somafm.com/spacestation-128-mp3'},
+    {name:'📻 SomaFM · Drone Zone', url:'https://ice1.somafm.com/dronezone-128-mp3'},
     {name:'ПАБЛО — Morgenstern', file:'pablo.mp3'},
     {name:'Платина — Валентина', file:'platina.mp3'},
     {name:'Камин (Jony) — Phosphxr', file:'kamin.mp3'},
@@ -208,10 +218,12 @@
     {name:'Седая ночь — Шатунов', file:'sedaya.mp3'}
   ];
   let trackIdx=0, musicStop=null, musicOn=false, volume=0.4, currentAudio=null, currentMaster=null;
-  $('trackname').textContent=TRACKS[0].name;
+  $('trackname').textContent=TRACKS[0].name; if($('trackname2'))$('trackname2').textContent=TRACKS[0].name;
   function playTrack(tr){
-    // mp3-файл с сервера (предоставлен пользователем) — играем через <audio>
-    if(tr.file){ try{ const a=new Audio(currentServer()+'/music/'+tr.file); a.loop=true; a.volume=volume; currentAudio=a; a.play().catch(()=>{}); return ()=>{ try{a.pause();}catch(e){} currentAudio=null; }; }catch(e){} }
+    // радио-стрим (tr.url) или локальный mp3 (tr.file) — через <audio>
+    // радио (url) — из интернета; локальные mp3 (file) — с твоего локального сервера (на облаке их нет: копирайт)
+    const src = tr.url || (tr.file ? 'http://localhost:3789/music/'+tr.file : null);
+    if(src){ try{ const a=new Audio(src); a.loop=!tr.url; a.volume=volume; currentAudio=a; a.play().catch(()=>{}); return ()=>{ try{a.pause(); a.src=''; }catch(e){} currentAudio=null; }; }catch(e){} }
     const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return null;
     const ctx=new AC(); if(ctx.state==='suspended')ctx.resume().catch(()=>{});
     const master=ctx.createGain(); master.gain.value=volume*0.35; currentMaster=master; master.connect(ctx.destination);
@@ -235,7 +247,7 @@
   function startMusic(){ if(musicStop)return; musicStop=playTrack(TRACKS[trackIdx]); musicOn=!!musicStop; updateSound(); }
   function stopMusic(){ if(musicStop){musicStop();musicStop=null;} musicOn=false; updateSound(); }
   function updateSound(){ const lab='♪ '+(musicOn?'Stop':'Play'); $('sound').textContent=lab; const s2=$('sound2'); if(s2)s2.textContent=lab; }
-  function setTrack(i){ trackIdx=(i+TRACKS.length)%TRACKS.length; $('trackname').textContent=TRACKS[trackIdx].name; if(musicOn){stopMusic();startMusic();} }
+  function setTrack(i){ trackIdx=(i+TRACKS.length)%TRACKS.length; const nm=TRACKS[trackIdx].name; $('trackname').textContent=nm; const t2=$('trackname2'); if(t2)t2.textContent=nm; if(musicOn){stopMusic();startMusic();} }
   $('sound').addEventListener('click',()=>{musicOn?stopMusic():startMusic();});
   $('prev').addEventListener('click',()=>setTrack(trackIdx-1));
   $('next').addEventListener('click',()=>setTrack(trackIdx+1));
@@ -244,7 +256,8 @@
   if($('sound2'))$('sound2').addEventListener('click',()=>{musicOn?stopMusic():startMusic();});
   // пиксельный эквалайзер в плеере (после объявления musicOn)
   const eqc=$('eq'), ex=eqc.getContext('2d'); let eqB=[3,3,3,3];
-  function drawEq(){ ex.clearRect(0,0,22,16); for(let i=0;i<4;i++){ const h=Math.max(1,Math.round(eqB[i])); ex.fillStyle=musicOn?'#00d000':'#4a5a4a'; ex.fillRect(i*6+1,16-h,4,h); } }
+  function drawEqOn(ctx){ ctx.clearRect(0,0,22,16); for(let i=0;i<4;i++){ const h=Math.max(1,Math.round(eqB[i])); ctx.fillStyle=musicOn?'#00d000':'#4a5a4a'; ctx.fillRect(i*6+1,16-h,4,h); } }
+  function drawEq(){ drawEqOn(ex); const e2=$('eq2'); if(e2)drawEqOn(e2.getContext('2d')); }
   function eqLoop(){ for(let i=0;i<4;i++){ const tg=musicOn?(2+Math.random()*13):2; eqB[i]+=(tg-eqB[i])*0.4; } drawEq(); requestAnimationFrame(eqLoop); }
   eqLoop();
 
@@ -337,19 +350,47 @@
     try{ await fetch(currentServer()+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,url:$('url').value})}); }catch(e){}
     $('fbtext').value=''; $('fbok').hidden=false; setTimeout(()=>{$('fbok').hidden=true;$('fbov').classList.remove('show');},2000); });
 
-  /* ══ АНИМАЦИЯ СБОРКИ ══ */
-  const cv=$('anim'), cx=cv.getContext('2d'); const S=4;
-  let raf=null,tick=0,sheets=[],fakeP=0,targP=0,phase=0;
-  const GLOBE={x:13,y:11,r:8},FIG={x:56,y:5};
-  function px(x,y,c){cx.fillStyle=c;cx.fillRect(Math.round(x)*S,Math.round(y)*S,S,S);}
-  function rct(x,y,w,h,c){cx.fillStyle=c;cx.fillRect(Math.round(x)*S,Math.round(y)*S,w*S,h*S);}
-  function dGlobe(){const g=GLOBE;for(let dy=-g.r;dy<=g.r;dy++)for(let dx=-g.r;dx<=g.r;dx++){const d2=dx*dx+dy*dy;if(d2>g.r*g.r)continue;let c='#2a7de1';if(d2>(g.r-1)*(g.r-1))c='#15487f';else if(dx===0||dy===0)c='#7fc0ff';else if(Math.abs(dy)===4&&Math.abs(dx)<g.r-2)c='#7fc0ff';px(g.x+dx,g.y+dy,c);}[[-3,-3],[-2,-3],[-2,-2],[2,2],[3,2],[2,3],[-4,1],[-3,1],[3,-2]].forEach(([dx,dy])=>px(g.x+dx,g.y+dy,'#2faa5c'));}
-  function dFig(){const f=FIG,b=4;rct(f.x,f.y,b,b,'#f24e1e');rct(f.x+b,f.y,b,b,'#ff7262');rct(f.x,f.y+b,b,b,'#a259ff');rct(f.x+b,f.y+b,b,b,'#1abcfe');px(f.x+b,f.y+b,'#fff');px(f.x+2*b-1,f.y+b,'#fff');px(f.x+b,f.y+2*b-1,'#fff');px(f.x+2*b-1,f.y+2*b-1,'#fff');rct(f.x,f.y+2*b,b,b,'#0acf83');px(f.x,f.y+3*b-1,'#fff');px(f.x+b-1,f.y+3*b-1,'#fff');}
-  function dSheet(px0,py0){const w=7,h=9,x=Math.round(px0),y=Math.round(py0);rct(x,y,w,h,'#fff');for(let i=0;i<h;i++){px(x,y+i,'#9a9a9a');px(x+w-1,y+i,'#9a9a9a');}for(let i=0;i<w;i++){px(x+i,y,'#9a9a9a');px(x+i,y+h-1,'#9a9a9a');}rct(x+1,y+2,4,1,'#5a7fd0');rct(x+1,y+4,5,1,'#9a9a9a');rct(x+1,y+6,3,1,'#9a9a9a');}
-  function draw(){ cx.clearRect(0,0,cv.width,cv.height); const x0=GLOBE.x+GLOBE.r+1,x1=FIG.x-2; for(let x=x0;x<x1;x++){if((x+Math.floor(tick/3))%4===0)px(x,GLOBE.y,'#b0b0b0');} dGlobe();dFig(); const sx=GLOBE.x+GLOBE.r-1,ex=FIG.x+1,baseY=GLOBE.y-4; for(const s of sheets){const e=s.p<0.5?2*s.p*s.p:1-Math.pow(-2*s.p+2,2)/2;dSheet(sx+(ex-sx)*e,baseY-Math.sin(s.p*Math.PI)*5);} fakeP+=(targP-fakeP)*0.08; $('pfill').style.width=Math.min(100,fakeP)+'%'; }
-  function loop(){ tick++; if(tick%16===0&&sheets.length<4)sheets.push({p:0}); for(const s of sheets)s.p+=0.022; sheets=sheets.filter(s=>s.p<1); if(phase===1&&targP<70)targP+=0.4; draw(); raf=requestAnimationFrame(loop); }
-  function startAnim(){ sheets=[];tick=0;fakeP=0;targP=8;phase=1;$('animlabel').innerHTML='соединение…';overlay.classList.add('show');if(!raf)loop(); }
-  function stopAnim(){ if(raf)cancelAnimationFrame(raf);raf=null;overlay.classList.remove('show'); }
+  /* ══ ОКНО СБОРКИ: мини-игра «тачка прыгает кусты» + прогресс ══ */
+  const cv=$('anim'), cx=cv.getContext('2d');
+  let raf=null, fakeP=0, targP=0, phase=0;
+  const carX=28;
+  const G={ ground:cv.height-14, carY:0, vy:0, jumping:false, bushes:[], score:0, best:0, speed:3, spawn:40, run:false, dead:false };
+  function resetGame(){ G.carY=0;G.vy=0;G.jumping=false;G.bushes=[];G.score=0;G.speed=3;G.spawn=40;G.dead=false; }
+  function jump(){ if(G.dead){ resetGame(); return; } G.vy=-6.5; G.jumping=true; } // спам = летит вверх (flappy-пасхалка)
+  function drawCar(x,y){
+    cx.fillStyle='#d02030'; cx.fillRect(x,y-8,24,6);
+    cx.fillStyle='#e84050'; cx.fillRect(x+5,y-13,13,6);
+    cx.fillStyle='#bfe6ff'; cx.fillRect(x+6,y-12,4,4); cx.fillRect(x+12,y-12,4,4);
+    cx.fillStyle='#111'; cx.beginPath(); cx.arc(x+6,y,3.2,0,7); cx.arc(x+18,y,3.2,0,7); cx.fill();
+    cx.fillStyle='#999'; cx.beginPath(); cx.arc(x+6,y,1.3,0,7); cx.arc(x+18,y,1.3,0,7); cx.fill();
+    cx.fillStyle='#ffd000'; cx.fillRect(x+23,y-6,2,2);
+  }
+  function drawBush(x,g){ cx.fillStyle='#176b2e'; cx.fillRect(x,g-9,4,9); cx.fillStyle='#1f9a42'; cx.fillRect(x-4,g-6,12,6); cx.fillStyle='#33c861'; cx.fillRect(x-2,g-8,4,3); cx.fillRect(x+4,g-7,3,3); }
+  function gameStep(){
+    if(G.dead) return;
+    G.vy+=0.5; G.carY+=G.vy; if(G.carY>0){G.carY=0;G.vy=0;G.jumping=false;}
+    G.spawn--; if(G.spawn<=0){ G.bushes.push({x:cv.width+8}); G.spawn=55+Math.floor(Math.random()*70); }
+    for(const b of G.bushes) b.x-=G.speed;
+    for(const b of G.bushes){ if(b.x>carX-3 && b.x<carX+24 && G.carY>-7){ G.dead=true; G.best=Math.max(G.best,Math.floor(G.score/10)); } }
+    G.bushes=G.bushes.filter(b=>b.x>-14);
+    G.score++; if(G.score%350===0 && G.speed<7)G.speed+=0.5;
+  }
+  function drawGame(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    const g=G.ground;
+    cx.fillStyle='#666'; cx.fillRect(0,g+2,cv.width,2);
+    cx.fillStyle='#bbb'; const off=Math.floor(G.score*G.speed)%16; for(let i=-off;i<cv.width;i+=16){ cx.fillRect(i,g+5,7,1); }
+    for(const b of G.bushes) drawBush(b.x,g);
+    drawCar(carX,g+G.carY);
+    cx.fillStyle='#000'; cx.font='12px MSSS,monospace'; cx.textAlign='right'; cx.fillText('▲ '+Math.floor(G.score/10)+(G.best?'  рек '+G.best:''),cv.width-4,12);
+    cx.textAlign='left'; cx.fillStyle='#999'; cx.fillText(G.dead?'💥 авария — клик/пробел = заново':'клик / пробел — прыжок',4,12);
+    if(G.dead){ cx.textAlign='center'; cx.fillStyle='rgba(190,0,0,.9)'; cx.font='bold 16px MSSS,monospace'; cx.fillText('💥 BOOM',cv.width/2,g-24); }
+  }
+  function loop(){ if(G.run)gameStep(); drawGame(); if(phase===1&&targP<70)targP+=0.4; fakeP+=(targP-fakeP)*0.08; $('pfill').style.width=Math.min(100,fakeP)+'%'; raf=requestAnimationFrame(loop); }
+  function startAnim(){ resetGame(); G.run=true; fakeP=0; targP=8; phase=1; $('animlabel').innerHTML='соединение…'; overlay.classList.add('show'); if(!raf)loop(); }
+  function stopAnim(){ G.run=false; if(raf)cancelAnimationFrame(raf); raf=null; overlay.classList.remove('show'); }
+  cv.addEventListener('mousedown',jump);
+  window.addEventListener('keydown',(e)=>{ if(e.code==='Space' && overlay.classList.contains('show')){ jump(); e.preventDefault(); } });
   $('cancelbtn').addEventListener('click',stopAnim);
 
   /* ══ ИМПОРТ (пачкой) ══ */
@@ -363,12 +404,13 @@
     for(let i=0;i<urls.length;i++){ const u=urls[i], pre=urls.length>1?('['+(i+1)+'/'+urls.length+'] '):'';
       phase=1;targP=8;fakeP=0;$('animlabel').innerHTML=pre+'соединение…';setStatus(pre+'рендерю '+u+'…');
       try{
-        const res=await fetch(server+'/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u,width})});
+        const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),150000);
+        const res=await fetch(server+'/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u,width}),signal:ctrl.signal}).finally(()=>clearTimeout(to));
         if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||('сервер вернул '+res.status));}
         const data=await res.json(); const imgCount=Object.keys(data.images||{}).length;
         phase=2;targP=85;$('animlabel').innerHTML=pre+'строю в Figma… <b>'+imgCount+'</b> картинок';setStatus(pre+'строю ноды… ('+imgCount+')');
         await buildOne(data); okN++;
-      }catch(e){ const msg=String(e.message||e); setStatus(pre+'ошибка: '+(msg.includes('Failed to fetch')?(srvMode==='limit'?'облако недоступно':'нет связи с сервером'):msg),'err'); }
+      }catch(e){ const msg=String(e.message||e); const out=e.name==='AbortError'?'сервер долго не отвечает (>2.5 мин) — сайт тяжёлый?':(msg.includes('Failed to fetch')?'нет связи с сервером':msg); setStatus(pre+'ошибка: '+out,'err'); }
     }
     stopAnim(); btn.disabled=false;
     if(urls.length>1)setStatus('готово: '+okN+'/'+urls.length+' сайтов','ok'); else if(okN)setStatus('готово ✓','ok');

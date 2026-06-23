@@ -1,7 +1,7 @@
 // HTML to Figma (Free) — main thread
 // Получает сериализованное дерево от UI и строит из него Figma-ноды.
 
-figma.showUI(__html__, { width: 400, height: 660 });
+figma.showUI(__html__, { width: 400, height: 510 });
 
 // кредиты-кликер: грузим сохранённое значение при старте
 (async () => {
